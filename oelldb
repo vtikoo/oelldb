@@ -18,4 +18,5 @@ OE_LLDB_PLUGIN_DIR=$OE_LLDB_LIB_DIR
 OE_LLDB_PTRACE_PATH=$OE_LLDB_LIB_DIR/liboe_ptrace.so
 
 export PYTHONPATH=$OE_LLDB_PLUGIN_DIR
-LD_PRELOAD=$OE_LLDB_PTRACE_PATH lldb -o "command script import oelldb" "$@"
+export LD_PRELOAD=$OE_LLDB_PTRACE_PATH
+lldb -o "command script import oelldb" "$@"
