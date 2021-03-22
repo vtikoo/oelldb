@@ -77,6 +77,40 @@ class oe_debug_enclave_t:
     def is_valid(self):
         return self.magic == self.MAGIC_VALUE
 
+class oe_debug_image_t:
+    OFFSETOF_MAGIC = 0
+    SIZEOF_MAGIC = 8
+    MAGIC_VALUE  = 0xecd538d85d491d0b
+
+    OFFSETOF_VERSION = 8
+    SIZEOF_VERSION = 8
+
+    OFFSETOF_PATH = 16
+    SIZEOF_PATH = 8
+
+    OFFSETOF_PATH_LENGTH = 24
+    SIZEOF_PATH_LENGTH = 8
+
+    OFFSETOF_BASE_ADDRESS = 32
+    SIZEOF_BASE_ADDRESS = 8
+
+    OFFSETOF_SIZE = 40
+    SIZEOF_SIZE = 8
+
+    def __init__(self, addr):
+        if addr:
+            self.magic = read_int_from_memory(addr + self.OFFSETOF_MAGIC, self.SIZEOF_MAGIC)
+        if not self.is_valid():
+            return
+
+        self.version = read_int_from_memory(addr + self.OFFSETOF_VERSION, self.SIZEOF_VERSION)
+        path = read_int_from_memory(addr + self.OFFSETOF_PATH, self.SIZEOF_PATH)
+        path_length = read_int_from_memory(addr + self.OFFSETOF_PATH_LENGTH, self.SIZEOF_PATH_LENGTH)
+        self.path = bytes(read_from_memory(path, path_length)).decode('utf-8')
+        self.base_address = read_int_from_memory(addr + self.OFFSETOF_BASE_ADDRESS, self.SIZEOF_BASE_ADDRESS)
+
+    def is_valid(self):
+        return self.magic == self.MAGIC_VALUE
 
 # This constant definition must align with sgx_tcs_t
 TCS_GSBASE_OFFSET =  56
@@ -255,10 +289,36 @@ class EnclaveTerminationBreakpoint:
         unload_enclave_symbol(enclave.path, enclave.base_address)
         return False
 
+class LibraryLoadBreakpoint:
+    def __init__(self, target):
+        breakpoint = target.BreakpointCreateByName("oe_notify_debugger_library_load")
+        breakpoint.SetScriptCallbackFunction('oelldb.LibraryLoadBreakpoint.onHit')
+
+    @staticmethod
+    def onHit(frame, bp_loc, dict):
+        library_image_addr = frame.FindValue("rdi", lldb.eValueTypeRegister).signed
+        library_image = oe_debug_image_t(library_image_addr)
+        load_enclave_symbol(library_image.path, library_image.base_address)
+        return False
+
+class LibraryUnloadBreakpoint:
+    def __init__(self, target):
+        breakpoint = target.BreakpointCreateByName("oe_notify_debugger_library_unload")
+        breakpoint.SetScriptCallbackFunction('oelldb.LibraryUnloadBreakpoint.onHit')
+
+    @staticmethod
+    def onHit(frame, bp_loc, dict):
+        library_image_addr = frame.FindValue("rdi", lldb.eValueTypeRegister).signed
+        library_image = oe_debug_image_t(library_image_addr)
+        unload_enclave_symbol(library_image.path, library_image.base_address)
+        return False
+
 def oe_debugger_init(debugger):
     # TODO: Initialize when there is no target yet
     EnclaveCreationBreakpoint(debugger.GetSelectedTarget())
     EnclaveTerminationBreakpoint(debugger.GetSelectedTarget())
+    LibraryLoadBreakpoint(debugger.GetSelectedTarget())
+    LibraryUnloadBreakpoint(debugger.GetSelectedTarget())
 
 # Invoked when `command script import oelldb is called.    
 def __lldb_init_module(debugger, dict):
