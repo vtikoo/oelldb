@@ -164,40 +164,31 @@ def load_enclave_symbol(enclave_path, enclave_base_addr):
     if os.path.exists(enclave_path) == True:
         enclave_path = os.path.abspath(enclave_path)
     else:
-        enclave_path = target_path_to_host_path(enclave_path)
-    lldb_cmd = load_symbol_cmd.GetLoadSymbolCommand(enclave_path, str(enclave_base_addr))
-    if lldb_cmd == -1:
-        print ("Can't get symbol loading command.")
+        print("Cannot find enclave at " + enclave_path)
         return False
-    
-    commands = lldb_cmd.split('\n')
-    for cmd in commands:
-        lldb.debugger.HandleCommand(cmd)
-        #print(cmd)
+    #print("Adding library: "+ enclave_path)
+    lldb.debugger.HandleCommand("target modules add " + enclave_path)
+    lldb.debugger.HandleCommand("target modules load --file " + enclave_path
+                                + " -s " + str(enclave_base_addr))
 
     # Store the oe_enclave address to global set that will be cleanup on exit.
     global g_loaded_oe_enclave_addrs
-    arg_list = lldb_cmd.split();
-    g_loaded_oe_enclave_addrs.add(int(arg_list[arg_list.index(".text") + 1], 16))
+    g_loaded_oe_enclave_addrs.add(enclave_base_addr)
     return True
 
-def unload_enclave_symbol(target, enclave_path, enclave_base_addr):
+def unload_enclave_symbol(enclave_path, enclave_base_addr):
     if os.path.exists(enclave_path) == True:
         enclave_path = os.path.abspath(enclave_path)
     else:
-        enclave_path = target_path_to_host_path(enclave_path)
+        print("Cannot find enclave at " + enclave_path)
+        return
 
-    thread = frame.GetThread();
-    process = thread.GetProcess();
-    target = process.GetTarget()
-    
-    module = target.FindModule(lldb.SBFileSpec(enclave_path.encode('utf-8')))
+    target = lldb.debugger.GetSelectedTarget()
+    module = target.FindModule(lldb.SBFileSpec(enclave_path))
     target.RemoveModule(module)
-    text_addr = load_symbol_cmd.GetTextAddr(enclave_path, str(enclave_base_addr))
-    global g_loaded_oe_enclave_addrs
-    g_loaded_oe_enclave_addrs.discard(text_addr)
 
-    return True
+    global g_loaded_oe_enclave_addrs
+    g_loaded_oe_enclave_addrs.discard(enclave_base_addr)
 
 def set_tcs_debug_flag(tcs_addr):
     string = read_from_memory(tcs_addr + 8, 4)
@@ -250,21 +241,6 @@ def enable_oeenclave_debug(oe_enclave_addr):
 
     print("oegdb: All tcs set to debug for enclave \n")
     return True
-
-def unload_enclave_symbol(enclave_path, enclave_base_addr):
-    if os.path.exists(enclave_path) == True:
-        enclave_path = os.path.abspath(enclave_path)
-    else:
-        enclave_path = target_path_to_host_path(enclave_path)
-
-    target = lldb.debugger.GetSelectedTarget()
-    module = target.FindModule(lldb.SBFileSpec(enclave_path))
-    target.RemoveModule(module)
-    
-    text_addr = load_symbol_cmd.GetTextAddr(enclave_path, str(enclave_base_addr))
-    global g_loaded_oe_enclave_addrs
-    g_loaded_oe_enclave_addrs.discard(text_addr)
-
 
 class EnclaveCreationBreakpoint:
     def __init__(self, target):
