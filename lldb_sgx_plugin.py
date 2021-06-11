@@ -245,7 +245,7 @@ def enable_oeenclave_debug(oe_enclave_addr):
 class EnclaveCreationBreakpoint:
     def __init__(self, target):
         breakpoint  = target.BreakpointCreateByName("oe_notify_debugger_enclave_creation")
-        breakpoint.SetScriptCallbackFunction('oelldb.EnclaveCreationBreakpoint.onHit')
+        breakpoint.SetScriptCallbackFunction('lldb_sgx_plugin.EnclaveCreationBreakpoint.onHit')
 
     @staticmethod
     def onHit(frame, bp_loc, dict):
@@ -256,7 +256,7 @@ class EnclaveCreationBreakpoint:
 class EnclaveTerminationBreakpoint:
     def __init__(self, target):
         breakpoint  = target.BreakpointCreateByName("oe_notify_debugger_enclave_termination")
-        breakpoint.SetScriptCallbackFunction('oelldb.EnclaveTerminationBreakpoint.onHit')
+        breakpoint.SetScriptCallbackFunction('lldb_sgx_plugin.EnclaveTerminationBreakpoint.onHit')
 
     @staticmethod
     def onHit(frame, bp_loc, dict):
@@ -268,7 +268,7 @@ class EnclaveTerminationBreakpoint:
 class LibraryLoadBreakpoint:
     def __init__(self, target):
         breakpoint = target.BreakpointCreateByName("oe_notify_debugger_library_load")
-        breakpoint.SetScriptCallbackFunction('oelldb.LibraryLoadBreakpoint.onHit')
+        breakpoint.SetScriptCallbackFunction('lldb_sgx_plugin.LibraryLoadBreakpoint.onHit')
 
     @staticmethod
     def onHit(frame, bp_loc, dict):
@@ -280,7 +280,7 @@ class LibraryLoadBreakpoint:
 class LibraryUnloadBreakpoint:
     def __init__(self, target):
         breakpoint = target.BreakpointCreateByName("oe_notify_debugger_library_unload")
-        breakpoint.SetScriptCallbackFunction('oelldb.LibraryUnloadBreakpoint.onHit')
+        breakpoint.SetScriptCallbackFunction('lldb_sgx_plugin.LibraryUnloadBreakpoint.onHit')
 
     @staticmethod
     def onHit(frame, bp_loc, dict):
@@ -296,6 +296,6 @@ def oe_debugger_init(debugger):
     LibraryLoadBreakpoint(debugger.GetSelectedTarget())
     LibraryUnloadBreakpoint(debugger.GetSelectedTarget())
 
-# Invoked when `command script import oelldb is called.    
+# Invoked when `command script import lldb_sgx_plugin is called.    
 def __lldb_init_module(debugger, dict):
     oe_debugger_init(debugger)
